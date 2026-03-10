@@ -51,9 +51,16 @@ header {
 header h1 {
   font-size: 1.25rem;
   font-weight: 500;
-  margin-bottom: 6px;
+  margin-bottom: 0;
   color: #f1f5f9;
   letter-spacing: 0.01em;
+}
+
+#title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 6px;
 }
 
 #controls {
@@ -375,12 +382,14 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   z-index: 120;
   background: rgba(22, 27, 34, 0.85);
   border: 1px solid var(--color-border);
   border-radius: 10px;
-  padding: 8px 6px;
+  padding: 10px 10px 8px;
+  width: 52px;
+  overflow: visible;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -394,20 +403,23 @@ body {
 }
 
 #zoom-slider {
-  -webkit-appearance: slider-vertical;
-  appearance: slider-vertical;
-  writing-mode: vertical-lr;
-  direction: rtl;
-  width: 24px;
-  height: 120px;
-  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 250px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  outline: none;
+  transform: rotate(-90deg);
+  transform-origin: center center;
   cursor: pointer;
+  margin: 122px 0;
 }
 
 #zoom-slider::-webkit-slider-runnable-track {
-  width: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
+  height: 6px;
+  background: transparent;
+  border: none;
 }
 
 #zoom-slider::-webkit-slider-thumb {
@@ -420,12 +432,13 @@ body {
   border: 2px solid var(--color-surface);
   box-shadow: 0 0 6px rgba(56, 189, 248, 0.4);
   cursor: pointer;
+  margin-top: -4px;
 }
 
 #zoom-slider::-moz-range-track {
-  width: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
+  height: 6px;
+  background: transparent;
+  border: none;
 }
 
 #zoom-slider::-moz-range-thumb {
@@ -892,21 +905,36 @@ body {
 }
 
 #info-btn {
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  color: var(--color-text-muted);
-  font-size: 0.72rem;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  border-radius: 999px;
+  color: #7dd3fc;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
-  padding: 2px 8px;
-  margin: 0 6px;
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  padding: 3px 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.1), 0 0 10px rgba(56, 189, 248, 0.18);
+  transition: background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  animation: info-btn-pulse 2.8s ease-in-out infinite;
 }
 
 #info-btn:hover {
-  background: rgba(56, 189, 248, 0.1);
-  border-color: rgba(56, 189, 248, 0.3);
-  color: var(--color-text);
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.65);
+  color: #e0f2fe;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.2), 0 0 14px rgba(56, 189, 248, 0.28);
+  transform: translateY(-1px);
+}
+
+@keyframes info-btn-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.1), 0 0 8px rgba(56, 189, 248, 0.14);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.18), 0 0 14px rgba(56, 189, 248, 0.26);
+  }
 }
 
 /* --- Footer --- */
@@ -984,6 +1012,11 @@ footer a:hover {
 @media (max-width: 480px) {
   header h1 {
     font-size: 1rem;
+  }
+
+  #title-row {
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
   #theme-filters button {

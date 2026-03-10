@@ -11,10 +11,10 @@
   var COLOR_AI         = "#60a5fa";
   var COLOR_PHYSICS    = "#fbbf24";
   var COLOR_BOTH       = "#a78bfa";
-  var COLOR_BG         = "rgba(148, 163, 184, 0.12)";
+  var COLOR_BG         = "rgba(148, 163, 184, 0.25)";
   var COLOR_NOISE      = "rgba(100, 116, 139, 0.2)";
 
-  var SIZE_BG    = 1.0;
+  var SIZE_BG    = 2.0;
   var SIZE_IAIFI = 4;
 
   var SEARCH_DEBOUNCE_MS = 200;
@@ -280,12 +280,12 @@
 
   function getCategoryColor(p) {
     var cat = (p.cat && p.cat.length > 0) ? p.cat[0] : "other";
-    if (!p.iaifi) return "rgba(148, 163, 184, 0.12)";
+    if (!p.iaifi) return COLOR_BG;
     return categoryColorMap[cat] || COLOR_NOISE;
   }
 
   function getEnrichmentColor(p) {
-    if (!p.iaifi) return "rgba(148, 163, 184, 0.12)";
+    if (!p.iaifi) return COLOR_BG;
     if (p.cluster == null || p.cluster === -1) return COLOR_NOISE;
     var cl = clusterMap[p.cluster];
     if (!cl || !cl.enrichment) return COLOR_NOISE;
@@ -555,7 +555,8 @@
 
     // Pass 2: Normal background points (distant stars)
     if (bgBatch.length > 0) {
-      ctx.fillStyle = COLOR_BG;
+      var activeBgColor = hoverAllPapers ? "rgba(148, 163, 184, 0.5)" : COLOR_BG;
+      ctx.fillStyle = activeBgColor;
       ctx.beginPath();
       for (var j = 0; j < bgBatch.length; j += 3) {
         ctx.moveTo(bgBatch[j] + bgBatch[j + 2], bgBatch[j + 1]);
@@ -1163,6 +1164,7 @@
   // ── Hover All Toggle ──────────────────────────────────────
   function onHoverAllToggle() {
     hoverAllPapers = elHoverAllToggle.checked;
+    requestRedraw();
   }
 
   // ── Apply filters ──────────────────────────────────────────
@@ -1194,7 +1196,8 @@
 
   function onZoomSliderInput() {
     if (zoomSliderUpdating) return;
-    var newScale = sliderToScale(parseInt(elZoomSlider.value, 10));
+    var sliderValue = clamp(parseFloat(elZoomSlider.value), 0, 100);
+    var newScale = sliderToScale(sliderValue);
 
     var cw = canvas._logicalW || elContainer.clientWidth;
     var ch = canvas._logicalH || elContainer.clientHeight;
@@ -1361,7 +1364,7 @@
 
     // Zoom slider
     if (elZoomSlider) elZoomSlider.addEventListener("input", onZoomSliderInput);
-    if (elZoomFit) elZoomFit.addEventListener("click", function () { fitToIaifi(); syncSliderToScale(); requestRedraw(); });
+    if (elZoomFit) elZoomFit.addEventListener("click", function () { fitToData(); syncSliderToScale(); requestRedraw(); });
 
     // Search results close
     if (elSearchResultsClose) {

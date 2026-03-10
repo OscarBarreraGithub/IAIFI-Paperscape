@@ -9,7 +9,10 @@
 </head>
 <body>
   <header>
-    <h1>IAIFI Research Landscape</h1>
+    <div id="title-row">
+      <h1>IAIFI Research Landscape</h1>
+      <button id="info-btn">How was this made?</button>
+    </div>
     <div id="controls">
       <div id="search-wrap">
         <input type="text" id="search" placeholder="Search by title or author...">
@@ -52,7 +55,7 @@
       <div id="hover-toggle-wrap">
         <label>
           <input type="checkbox" id="hover-all-toggle">
-          Also show arXiv papers on hover
+          Show arXiv papers
         </label>
       </div>
     </div>
@@ -63,9 +66,9 @@
     <div id="scatter-container"></div>
     <div id="zoom-controls">
       <span id="zoom-label-in">+</span>
-      <input type="range" id="zoom-slider" min="0" max="100" value="50" orient="vertical">
+      <input type="range" id="zoom-slider" min="0" max="100" value="50">
       <span id="zoom-label-out">&minus;</span>
-      <button id="zoom-fit" title="Reset to IAIFI view">Fit</button>
+      <button id="zoom-fit" title="Fit all papers">Fit</button>
     </div>
     <div id="search-results" class="hidden">
       <div id="search-results-header">
@@ -134,7 +137,6 @@
   <footer>
     <p>
       Local neighborhoods are meaningful; global geometry is approximate.
-      <button id="info-btn">How was this made?</button>
       <a href="https://iaifi.org">IAIFI</a>
       <span id="data-version"></span>
     </p>
