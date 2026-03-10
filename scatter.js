@@ -430,6 +430,8 @@
           var p = allPapers[idx];
           // Skip non-IAIFI if iaifiOnly
           if (iaifiOnly && !p.iaifi) continue;
+          // Skip papers that don't pass current filters (theme, year, search)
+          if (!passesFilters(p)) continue;
           var psx = dataToScreenX(p.x);
           var psy = dataToScreenY(p.y);
           var ddx = psx - sx;
@@ -562,18 +564,30 @@
       ctx.fill();
     }
 
-    // Pass 3: IAIFI glow halos (draw before solid dots)
+    // Pass 3: IAIFI bloom halos (two-layer batched glow)
     var glowColors = Object.keys(glowBatches);
     for (var gi = 0; gi < glowColors.length; gi++) {
       var ghex = glowColors[gi];
       var gpts = glowBatches[ghex];
       var rgb = hexToRgb(ghex);
-      ctx.fillStyle = "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + ",0.12)";
+
+      // Layer 1: wide soft haze
+      ctx.fillStyle = "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + ",0.04)";
       ctx.beginPath();
       for (var j = 0; j < gpts.length; j += 3) {
-        var glowR = gpts[j + 2] * 2.5;
-        ctx.moveTo(gpts[j] + glowR, gpts[j + 1]);
-        ctx.arc(gpts[j], gpts[j + 1], glowR, 0, TWO_PI);
+        var outerR = gpts[j + 2] * 4.5;
+        ctx.moveTo(gpts[j] + outerR, gpts[j + 1]);
+        ctx.arc(gpts[j], gpts[j + 1], outerR, 0, TWO_PI);
+      }
+      ctx.fill();
+
+      // Layer 2: tighter core glow
+      ctx.fillStyle = "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + ",0.09)";
+      ctx.beginPath();
+      for (var j = 0; j < gpts.length; j += 3) {
+        var midR = gpts[j + 2] * 2.2;
+        ctx.moveTo(gpts[j] + midR, gpts[j + 1]);
+        ctx.arc(gpts[j], gpts[j + 1], midR, 0, TWO_PI);
       }
       ctx.fill();
     }
