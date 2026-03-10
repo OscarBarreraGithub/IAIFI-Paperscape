@@ -62,9 +62,10 @@
   <main>
     <div id="scatter-container"></div>
     <div id="zoom-controls">
-      <button id="zoom-in" title="Zoom in">+</button>
-      <button id="zoom-out" title="Zoom out">&minus;</button>
-      <button id="zoom-fit" title="Fit to IAIFI papers">Fit</button>
+      <span id="zoom-label-in">+</span>
+      <input type="range" id="zoom-slider" min="0" max="100" value="50" orient="vertical">
+      <span id="zoom-label-out">&minus;</span>
+      <button id="zoom-fit" title="Reset to IAIFI view">Fit</button>
     </div>
     <div id="search-results" class="hidden">
       <div id="search-results-header">

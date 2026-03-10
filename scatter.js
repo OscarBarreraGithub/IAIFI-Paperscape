@@ -95,12 +95,14 @@
       elYearMin, elYearMax, elYearRange, elDataVersion, elCitToggle,
       elCitLegend, elCitWrap, elHoverAllToggle, elPaperCount,
       elSearchCount, elPanelBgNotice,
-      elZoomIn, elZoomOut, elZoomFit,
+      elZoomSlider, elZoomFit,
       elSearchResults, elSearchResultsList, elSearchResultsClose,
       elSearchResultsTitle;
 
-  // Minimum scale: computed after data load to prevent zooming too far out
+  // Zoom range: computed after data load
   var minScale = 5;
+  var maxScale = 50000;
+  var zoomSliderUpdating = false; // prevent feedback loop
 
   function cacheDom() {
     var q = function (s) { return document.querySelector(s); };
@@ -129,8 +131,7 @@
     elPaperCount     = q("#paper-count");
     elSearchCount    = q("#search-count");
     elPanelBgNotice  = q("#panel-bg-notice");
-    elZoomIn         = q("#zoom-in");
-    elZoomOut        = q("#zoom-out");
+    elZoomSlider     = q("#zoom-slider");
     elZoomFit        = q("#zoom-fit");
     elSearchResults      = q("#search-results");
     elSearchResultsList  = q("#search-results-list");
@@ -800,13 +801,14 @@
 
     var factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
     var newScale = transform.scale * factor;
-    newScale = clamp(newScale, minScale, 50000);
+    newScale = clamp(newScale, minScale, maxScale);
     transform.scale = newScale;
 
     var h = canvas._logicalH || elContainer.clientHeight;
     transform.x = dx - mx / transform.scale;
     transform.y = dy - (h - my) / transform.scale;
 
+    syncSliderToScale();
     requestRedraw();
   }
 
@@ -1156,8 +1158,30 @@
     requestRedraw();
   }
 
-  // ── Zoom Buttons ──────────────────────────────────────────
-  function zoomBy(factor) {
+  // ── Zoom Slider ──────────────────────────────────────────
+  // Map slider 0-100 to log scale between minScale and maxScale
+  function sliderToScale(val) {
+    var t = val / 100;
+    return minScale * Math.pow(maxScale / minScale, t);
+  }
+
+  function scaleToSlider(s) {
+    if (s <= minScale) return 0;
+    if (s >= maxScale) return 100;
+    return 100 * Math.log(s / minScale) / Math.log(maxScale / minScale);
+  }
+
+  function syncSliderToScale() {
+    if (!elZoomSlider) return;
+    zoomSliderUpdating = true;
+    elZoomSlider.value = Math.round(scaleToSlider(transform.scale));
+    zoomSliderUpdating = false;
+  }
+
+  function onZoomSliderInput() {
+    if (zoomSliderUpdating) return;
+    var newScale = sliderToScale(parseInt(elZoomSlider.value, 10));
+
     var cw = canvas._logicalW || elContainer.clientWidth;
     var ch = canvas._logicalH || elContainer.clientHeight;
     var cx = cw / 2;
@@ -1166,7 +1190,7 @@
     var dx = screenToDataX(cx);
     var dy = screenToDataY(cy);
 
-    transform.scale = clamp(transform.scale * factor, minScale, 50000);
+    transform.scale = newScale;
 
     transform.x = dx - cx / transform.scale;
     transform.y = dy - (ch - cy) / transform.scale;
@@ -1321,10 +1345,9 @@
       elHoverAllToggle.addEventListener("change", onHoverAllToggle);
     }
 
-    // Zoom buttons
-    if (elZoomIn)  elZoomIn.addEventListener("click", function () { zoomBy(1.5); });
-    if (elZoomOut) elZoomOut.addEventListener("click", function () { zoomBy(1 / 1.5); });
-    if (elZoomFit) elZoomFit.addEventListener("click", function () { fitToIaifi(); requestRedraw(); });
+    // Zoom slider
+    if (elZoomSlider) elZoomSlider.addEventListener("input", onZoomSliderInput);
+    if (elZoomFit) elZoomFit.addEventListener("click", function () { fitToIaifi(); syncSliderToScale(); requestRedraw(); });
 
     // Search results close
     if (elSearchResultsClose) {
@@ -1396,11 +1419,12 @@
           var dy = screenToDataY(my);
 
           var factor = dist / lastTouchDist;
-          transform.scale = clamp(transform.scale * factor, minScale, 50000);
+          transform.scale = clamp(transform.scale * factor, minScale, maxScale);
 
           var hh = canvas._logicalH || elContainer.clientHeight;
           transform.x = dx - mx / transform.scale;
           transform.y = dy - (hh - my) / transform.scale;
+          syncSliderToScale();
           requestRedraw();
         }
 
@@ -1454,6 +1478,7 @@
     }
 
     bindCanvasEvents();
+    syncSliderToScale();
 
     requestRedraw();
     rafId = requestAnimationFrame(drawFrame);
@@ -1528,7 +1553,9 @@
       iaifiBounds = { xMin: xMin, xMax: xMax, yMin: yMin, yMax: yMax };
     }
 
-    // Compute minimum zoom scale: don't allow zooming out beyond ~1.5x IAIFI bbox
+    // Compute zoom range
+    // minScale: IAIFI bbox with 25% padding (can't zoom out past this)
+    // maxScale: ~50x of the initial fit (deep zoom into individual clusters)
     {
       var _cw = elContainer.clientWidth || 800;
       var _ch = elContainer.clientHeight || 600;
@@ -1536,11 +1563,13 @@
       var _dh = iaifiBounds.yMax - iaifiBounds.yMin;
       if (_dw === 0) _dw = 1;
       if (_dh === 0) _dh = 1;
-      var _pad = 0.5; // allow 50% extra space around IAIFI bbox
+      var _pad = 0.25;
       var _scaleX = _cw / (_dw * (1 + 2 * _pad));
       var _scaleY = _ch / (_dh * (1 + 2 * _pad));
-      minScale = Math.min(_scaleX, _scaleY) * 0.5;
+      var fitScale = Math.min(_scaleX, _scaleY);
+      minScale = fitScale * 0.7;
       if (minScale < 1) minScale = 1;
+      maxScale = fitScale * 50;
     }
 
     // Sort clusters by size (largest first) for progressive label reveal
