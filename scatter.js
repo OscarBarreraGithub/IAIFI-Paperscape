@@ -1356,9 +1356,23 @@
       });
     }
 
+    // Info modal
+    var infoModal = document.querySelector("#info-modal");
+    var infoBtn = document.querySelector("#info-btn");
+    var infoClose = document.querySelector("#info-modal-close");
+    if (infoBtn && infoModal) {
+      infoBtn.addEventListener("click", function () { infoModal.classList.remove("hidden"); });
+      infoClose.addEventListener("click", function () { infoModal.classList.add("hidden"); });
+      infoModal.addEventListener("click", function (e) {
+        if (e.target === infoModal) infoModal.classList.add("hidden");
+      });
+    }
+
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") {
-        if (elPanel.classList.contains("visible")) {
+        if (infoModal && !infoModal.classList.contains("hidden")) {
+          infoModal.classList.add("hidden");
+        } else if (elPanel.classList.contains("visible")) {
           closePanel();
         } else if (elSearchResults && !elSearchResults.classList.contains("hidden")) {
           elSearchResults.classList.add("hidden");

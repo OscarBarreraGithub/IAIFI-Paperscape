@@ -89,9 +89,52 @@
     </div>
   </main>
 
+  <div id="info-modal" class="hidden">
+    <div id="info-modal-content">
+      <button id="info-modal-close">&times;</button>
+      <h2>How was this made?</h2>
+      <p>
+        Each dot on this map is a research paper. The colored ones are
+        publications from <a href="https://iaifi.org">IAIFI</a> (the NSF
+        Institute for Artificial Intelligence and Fundamental Interactions);
+        the faint grey dots are nearby papers from the broader arXiv that give
+        the IAIFI work context.
+      </p>
+      <p>
+        Paper positions come from <strong>SPECTER2</strong>, a language model
+        trained on scientific text. SPECTER2 reads each paper's title and
+        abstract and produces a 768-dimensional vector that captures what the
+        paper is about. Papers with similar content end up with similar
+        vectors. We project those vectors down to 2D with
+        <strong>DensMAP</strong> (a density-preserving variant of UMAP) so
+        they can be drawn on screen. Papers that are close together on the
+        map really do discuss related topics; papers far apart are about
+        different things. Local neighborhoods are trustworthy, but
+        long-range distances are only approximate.
+      </p>
+      <p>
+        Clusters are identified with <strong>HDBSCAN</strong> and
+        labeled automatically from the most common arXiv categories and
+        keywords in each group. The "IAIFI Theme" colors (AI, Physics, Both)
+        come from cross-referencing each paper's arXiv categories against
+        typical AI and physics category prefixes.
+      </p>
+      <p>
+        The data pipeline scrapes paper metadata from
+        <a href="https://iaifi.org">iaifi.org</a>, pulls related
+        background papers from the Semantic Scholar API, embeds everything
+        with SPECTER2, selects the most relevant background via
+        diversity-weighted kNN, and exports the final JSON that this page
+        reads. The visualization is plain Canvas 2D with no external
+        libraries.
+      </p>
+    </div>
+  </div>
+
   <footer>
     <p>
       Local neighborhoods are meaningful; global geometry is approximate.
+      <button id="info-btn">How was this made?</button>
       <a href="https://iaifi.org">IAIFI</a>
       <span id="data-version"></span>
     </p>
