@@ -94,7 +94,13 @@
       elShowMore, elPanelArxiv, elSearch, elSearchClear, elColorMode,
       elYearMin, elYearMax, elYearRange, elDataVersion, elCitToggle,
       elCitLegend, elCitWrap, elHoverAllToggle, elPaperCount,
-      elSearchCount, elPanelBgNotice;
+      elSearchCount, elPanelBgNotice,
+      elZoomIn, elZoomOut, elZoomFit,
+      elSearchResults, elSearchResultsList, elSearchResultsClose,
+      elSearchResultsTitle;
+
+  // Minimum scale: computed after data load to prevent zooming too far out
+  var minScale = 5;
 
   function cacheDom() {
     var q = function (s) { return document.querySelector(s); };
@@ -123,6 +129,13 @@
     elPaperCount     = q("#paper-count");
     elSearchCount    = q("#search-count");
     elPanelBgNotice  = q("#panel-bg-notice");
+    elZoomIn         = q("#zoom-in");
+    elZoomOut        = q("#zoom-out");
+    elZoomFit        = q("#zoom-fit");
+    elSearchResults      = q("#search-results");
+    elSearchResultsList  = q("#search-results-list");
+    elSearchResultsClose = q("#search-results-close");
+    elSearchResultsTitle = q("#search-results-title");
   }
 
   // ── Utility ────────────────────────────────────────────────
@@ -785,9 +798,9 @@
     var dx = screenToDataX(mx);
     var dy = screenToDataY(my);
 
-    var factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+    var factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
     var newScale = transform.scale * factor;
-    newScale = clamp(newScale, 5, 50000);
+    newScale = clamp(newScale, minScale, 50000);
     transform.scale = newScale;
 
     var h = canvas._logicalH || elContainer.clientHeight;
@@ -1139,6 +1152,146 @@
   // ── Apply filters ──────────────────────────────────────────
   function applyFilters() {
     updatePaperCount();
+    updateSearchResults();
+    requestRedraw();
+  }
+
+  // ── Zoom Buttons ──────────────────────────────────────────
+  function zoomBy(factor) {
+    var cw = canvas._logicalW || elContainer.clientWidth;
+    var ch = canvas._logicalH || elContainer.clientHeight;
+    var cx = cw / 2;
+    var cy = ch / 2;
+
+    var dx = screenToDataX(cx);
+    var dy = screenToDataY(cy);
+
+    transform.scale = clamp(transform.scale * factor, minScale, 50000);
+
+    transform.x = dx - cx / transform.scale;
+    transform.y = dy - (ch - cy) / transform.scale;
+    requestRedraw();
+  }
+
+  // ── Search Results Panel ─────────────────────────────────
+  var searchResultItems = [];
+  var activeSearchResultIdx = -1;
+
+  function updateSearchResults() {
+    if (!elSearchResults || !elSearchResultsList) return;
+
+    if (!searchQuery) {
+      elSearchResults.classList.add("hidden");
+      searchResultItems = [];
+      activeSearchResultIdx = -1;
+      return;
+    }
+
+    var q = searchQuery.toLowerCase();
+    var matches = [];
+    for (var i = 0; i < allPapers.length; i++) {
+      var p = allPapers[i];
+      if (!p.iaifi) continue;
+      var title   = (p.t || "").toLowerCase();
+      var authors = (p.a || "").toLowerCase();
+      if (title.indexOf(q) !== -1 || authors.indexOf(q) !== -1) {
+        matches.push(i);
+      }
+    }
+
+    // Also include matching background papers (after IAIFI)
+    for (var i = 0; i < allPapers.length; i++) {
+      var p = allPapers[i];
+      if (p.iaifi) continue;
+      var title   = (p.t || "").toLowerCase();
+      var authors = (p.a || "").toLowerCase();
+      if (title.indexOf(q) !== -1 || authors.indexOf(q) !== -1) {
+        matches.push(i);
+      }
+    }
+
+    searchResultItems = matches;
+
+    if (matches.length === 0) {
+      elSearchResults.classList.add("hidden");
+      return;
+    }
+
+    // Cap display at 100 results
+    var displayCount = Math.min(matches.length, 100);
+
+    elSearchResultsTitle.textContent = matches.length + " result" + (matches.length !== 1 ? "s" : "");
+
+    elSearchResultsList.innerHTML = "";
+    for (var j = 0; j < displayCount; j++) {
+      var idx = matches[j];
+      var p = allPapers[idx];
+      var li = document.createElement("li");
+
+      var dotColor = "";
+      if (p.iaifi) {
+        switch (p.theme) {
+          case "AI": dotColor = COLOR_AI; break;
+          case "Physics": dotColor = COLOR_PHYSICS; break;
+          case "Both": dotColor = COLOR_BOTH; break;
+          default: dotColor = COLOR_AI;
+        }
+      } else {
+        dotColor = "#64748b";
+      }
+
+      var authors = p.a || "";
+      if (authors.length > 60) authors = authors.substring(0, 57) + "...";
+      var cat = (p.cat && p.cat.length > 0) ? p.cat[0] : "";
+
+      li.innerHTML =
+        '<div class="sr-title">' +
+        '<span class="sr-theme-dot" style="background:' + dotColor + '"></span>' +
+        escapeHtml(p.t || "Untitled") + '</div>' +
+        '<div class="sr-meta">' + escapeHtml(authors) + ' · ' + (p.yr || "") +
+        (p.iaifi ? "" : " (background)") + '</div>';
+
+      li.dataset.paperIdx = idx;
+      li.addEventListener("click", (function (paperIdx) {
+        return function () {
+          panToAndSelect(paperIdx);
+        };
+      })(idx));
+
+      elSearchResultsList.appendChild(li);
+    }
+
+    if (matches.length > displayCount) {
+      var more = document.createElement("li");
+      more.innerHTML = '<div class="sr-meta" style="text-align:center;padding:8px;">... and ' +
+        (matches.length - displayCount) + ' more</div>';
+      more.style.cursor = "default";
+      elSearchResultsList.appendChild(more);
+    }
+
+    elSearchResults.classList.remove("hidden");
+  }
+
+  function panToAndSelect(paperIdx) {
+    var p = allPapers[paperIdx];
+    if (!p) return;
+
+    // Pan to center on this paper
+    var cw = canvas._logicalW || elContainer.clientWidth;
+    var ch = canvas._logicalH || elContainer.clientHeight;
+
+    transform.x = p.x - cw / (2 * transform.scale);
+    transform.y = p.y - ch / (2 * transform.scale);
+
+    selectedIdx = paperIdx;
+    openPanel(p.id);
+
+    // Highlight in search results list
+    var items = elSearchResultsList.querySelectorAll("li");
+    for (var i = 0; i < items.length; i++) {
+      items[i].classList.toggle("active", items[i].dataset.paperIdx == String(paperIdx));
+    }
+
     requestRedraw();
   }
 
@@ -1149,6 +1302,7 @@
       elSearch.value = "";
       searchQuery = "";
       elSearchClear.classList.add("hidden");
+      if (elSearchResults) elSearchResults.classList.add("hidden");
       applyFilters();
     });
 
@@ -1167,9 +1321,25 @@
       elHoverAllToggle.addEventListener("change", onHoverAllToggle);
     }
 
+    // Zoom buttons
+    if (elZoomIn)  elZoomIn.addEventListener("click", function () { zoomBy(1.5); });
+    if (elZoomOut) elZoomOut.addEventListener("click", function () { zoomBy(1 / 1.5); });
+    if (elZoomFit) elZoomFit.addEventListener("click", function () { fitToIaifi(); requestRedraw(); });
+
+    // Search results close
+    if (elSearchResultsClose) {
+      elSearchResultsClose.addEventListener("click", function () {
+        elSearchResults.classList.add("hidden");
+      });
+    }
+
     document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && elPanel.classList.contains("visible")) {
-        closePanel();
+      if (e.key === "Escape") {
+        if (elPanel.classList.contains("visible")) {
+          closePanel();
+        } else if (elSearchResults && !elSearchResults.classList.contains("hidden")) {
+          elSearchResults.classList.add("hidden");
+        }
       }
     });
   }
@@ -1226,7 +1396,7 @@
           var dy = screenToDataY(my);
 
           var factor = dist / lastTouchDist;
-          transform.scale = clamp(transform.scale * factor, 5, 50000);
+          transform.scale = clamp(transform.scale * factor, minScale, 50000);
 
           var hh = canvas._logicalH || elContainer.clientHeight;
           transform.x = dx - mx / transform.scale;
@@ -1356,6 +1526,21 @@
       iaifiBounds.yMax = iyMax;
     } else {
       iaifiBounds = { xMin: xMin, xMax: xMax, yMin: yMin, yMax: yMax };
+    }
+
+    // Compute minimum zoom scale: don't allow zooming out beyond ~1.5x IAIFI bbox
+    {
+      var _cw = elContainer.clientWidth || 800;
+      var _ch = elContainer.clientHeight || 600;
+      var _dw = iaifiBounds.xMax - iaifiBounds.xMin;
+      var _dh = iaifiBounds.yMax - iaifiBounds.yMin;
+      if (_dw === 0) _dw = 1;
+      if (_dh === 0) _dh = 1;
+      var _pad = 0.5; // allow 50% extra space around IAIFI bbox
+      var _scaleX = _cw / (_dw * (1 + 2 * _pad));
+      var _scaleY = _ch / (_dh * (1 + 2 * _pad));
+      minScale = Math.min(_scaleX, _scaleY) * 0.5;
+      if (minScale < 1) minScale = 1;
     }
 
     // Sort clusters by size (largest first) for progressive label reveal
